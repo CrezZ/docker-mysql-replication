@@ -9,20 +9,20 @@ REPLICATION_HEALTH_GRACE_PERIOD=${REPLICATION_HEALTH_GRACE_PERIOD:-3}
 REPLICATION_HEALTH_TIMEOUT=${REPLICATION_HEALTH_TIMEOUT:-10}
 
 check_slave_health () {
-  echo Checking replication health:
+  echo Checking replication health: 1>&2;
   status=$(mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SHOW SLAVE STATUS\G")
-  echo "$status" | egrep 'Slave_(IO|SQL)_Running:|Seconds_Behind_Master:|Last_.*_Error:' | grep -v "Error: $"
+  echo "$status" | egrep 'Slave_(IO|SQL)_Running:|Seconds_Behind_Master:|Last_.*_Error:' | grep -v "Error: $" 1>&2;
   if ! echo "$status" | grep -qs "Slave_IO_Running: Yes"    ||
      ! echo "$status" | grep -qs "Slave_SQL_Running: Yes"   ||
      ! echo "$status" | grep -qs "Seconds_Behind_Master: 0" ; then
-	echo WARNING: Replication is not healthy.
+	echo WARNING: Replication is not healthy. 1>&2;
     return 1
   fi
   return 0
 }
 
 
-echo Updating master connetion info in slave.
+echo Updating master connetion info in slave. 1>&2;
 
 mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "RESET MASTER; \
   CHANGE MASTER TO \
@@ -45,21 +45,21 @@ mysqldump \
   --flush-privileges \
   | mysql -uroot -p$MYSQL_ROOT_PASSWORD
 
-echo mysqldump completed.
+echo mysqldump completed. 1>&2;
 
-echo Starting slave ...
+echo Starting slave ... 1>&2;
 mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "START SLAVE;"
 
-echo Initial health check:
+echo Initial health check: 1>&2;
 check_slave_health
 
-echo Waiting for health grace period and slave to be still healthy:
+echo Waiting for health grace period and slave to be still healthy: 1>&2;
 sleep $REPLICATION_HEALTH_GRACE_PERIOD
 
 counter=0
 while ! check_slave_health; do
   if (( counter >= $REPLICATION_HEALTH_TIMEOUT )); then
-    echo ERROR: Replication not healthy, health timeout reached, failing.
+    echo ERROR: Replication not healthy, health timeout reached, failing. 1>&2;
 	break
     exit 1
   fi
